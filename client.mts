@@ -1,45 +1,59 @@
+import { Request, Response, Message } from "common.mjs";
+
 const ws = new WebSocket("ws://localhost:1234");
+const grid = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+const canvas = document.getElementById("game") as HTMLCanvasElement | null;
+const ctx = canvas?.getContext("2d") as CanvasRenderingContext2D | null;
 
 ws.onopen = (e) => {
-	console.log("connected to server");
-
-	const canvas = document.getElementById("game") as HTMLCanvasElement | null;
-
-	if (canvas) {
-		const ctx = canvas.getContext("2d") as CanvasRenderingContext2D | null;
-		if (ctx) {
-			drawGrid(ctx);
-
-			canvas.addEventListener("click", (evt: any) => {
-				const {clientX, clientY} = evt;
-				const x = Math.floor(clientX / 90);
-				const y = Math.floor(clientY / 90);
-				if (x < 3 && y < 3) {
-					const rx = x + x * 100;
-					const ry = y + y * 100;
-					ctx.fillStyle = "red";
-					ctx.fillRect(rx, ry, 90, 90);
-					
-					ws.send(JSON.stringify({x, y}));
-				}
-			});
-		}
-	}
+    console.log("connected to server");
+    if (canvas) {
+        if (ctx) {
+            drawGrid(ctx, grid);
+            canvas.addEventListener("click", (evt: any) => {
+                const {clientX, clientY} = evt;
+                const x = Math.floor(clientX / 90);
+                const y = Math.floor(clientY / 90);
+                if (x < 3 && y < 3) {
+                    const msg: Request = { x, y };
+                    ws.send(JSON.stringify(msg));
+                }
+            });
+        }
+    }
 };
 
 ws.onmessage = (evt) => {
-	console.log(evt.data);
+    const msg: Message = JSON.parse(evt.data);
+    if (ctx && msg.kind == "update") {
+        drawGrid(ctx, (msg.data as Response).grid);
+    }
+    else {
+        console.log(msg);
+    }
 };
 
 
-function drawGrid(ctx: CanvasRenderingContext2D){
-	for (let y = 0; y < 3; ++y) {
-		for (let x = 0; x < 3; ++x) {
-			ctx.fillStyle = "green";
-			const rx = x + x * 100;
-			const ry = y + y * 100;
-			ctx.fillRect(rx, ry, 90, 90);
-		}
-	}
+function drawGrid(ctx: CanvasRenderingContext2D, grid: number[]){
+    for (let y = 0; y < 3; ++y) {
+        for (let x = 0; x < 3; ++x) {
+            if (grid[y*3+x] == 0) {
+                ctx.fillStyle = "black";
+                const rx = x + x * 100;
+                const ry = y + y * 100;
+                ctx.fillRect(rx, ry, 90, 90);
+            } else if (grid[y*3+x] == 1) {
+                ctx.fillStyle = "green";
+                const rx = x + x * 100;
+                const ry = y + y * 100;
+                ctx.fillRect(rx, ry, 90, 90);
+            } else if (grid[y*3+x] == 2) {
+                ctx.fillStyle = "blue";
+                const rx = x + x * 100;
+                const ry = y + y * 100;
+                ctx.fillRect(rx, ry, 90, 90);
+            }
+        }
+    }
 }
 

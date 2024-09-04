@@ -1,32 +1,37 @@
-import { WebSocketServer } from "ws";
+import { Message, Response } from "common.mjs"
+import { WebSocket, WebSocketServer } from "ws";
 
 const port = 1234
 const wss = new WebSocketServer({ port });
 
+let grid = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+
 console.log(`waiting for connection on ws://localhost:${port}`);
 
 let id = -1;
-let clients = [];
+let clients: WebSocket[] = [];
 
-wss.on("connection", (ws, req) => {
-	id += 1;
-	if (id > 1) {
-		throw new Error("too many players");
-	}
+wss.on("connection", (ws) => {
+    id += 1;
+    if (id > 1) {
+        throw new Error("too many players");
+    }
 
-	clients.push(ws);
-	ws.send("bonjour" + id);
-	console.log(`player #${id} connected`);
+    clients.push(ws);
+    ws.send(JSON.stringify({kind: "hello", data: `player #${id} connected`} as any));
+    console.log(`player #${id} connected`);
 
     ws.addEventListener("message", (event: any) => {
-        const message = event.data.toString();
-        console.log(`message from client : ${message}`);
-		if (id == 0) {
-			clients[1].send("coucou");
-		} else {
-			clients[0].send("coucou");
-		}
+        const message = JSON.parse(event.data);
+        const {x, y} = message;
+        const playerId = clients.indexOf(ws);
+        grid[y*3+x] = playerId + 1;
+        for (const c of clients) {
+            const msg: Message = {
+                kind: "update",
+                data: { grid } as Response,
+            }
+            c.send(JSON.stringify(msg));
+        }
     });
 });
-
-
