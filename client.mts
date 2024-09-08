@@ -5,6 +5,8 @@ const grid = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 const canvas = document.getElementById("game") as HTMLCanvasElement | null;
 const ctx = canvas?.getContext("2d") as CanvasRenderingContext2D | null;
 
+let myId: number | null = null;
+
 ws.onopen = (e) => {
     console.log("connected to server");
 
@@ -26,20 +28,25 @@ ws.onopen = (e) => {
 
 ws.onmessage = (evt) => {
     const msg: Message = JSON.parse(evt.data);
+    console.log(msg);
     switch (msg.kind) {
         case "hello": {
+            myId = (msg.data as Hello).id;
             const h1 = document.getElementById("title") as HTMLHeadingElement | null;
             if (h1) {
-                h1.innerText = `connected to server with id ${(msg.data as Hello).id}`
+                h1.innerText = `connected to server with id ${myId}`
             }
+            break;
         }
         case "update": {
             if (ctx) {
                 drawGrid(ctx, (msg.data as Response).grid);
             }
+            break;
         }
         default: {
             console.log(msg);
+            break;
         }
     }
 };
@@ -48,22 +55,15 @@ ws.onmessage = (evt) => {
 function drawGrid(ctx: CanvasRenderingContext2D, grid: number[]){
     for (let y = 0; y < 3; ++y) {
         for (let x = 0; x < 3; ++x) {
-            if (grid[y*3+x] == 0) {
-                ctx.fillStyle = "black";
-                const rx = x + x * 100;
-                const ry = y + y * 100;
-                ctx.fillRect(rx, ry, 90, 90);
-            } else if (grid[y*3+x] == 1) {
-                ctx.fillStyle = "green";
-                const rx = x + x * 100;
-                const ry = y + y * 100;
-                ctx.fillRect(rx, ry, 90, 90);
-            } else if (grid[y*3+x] == 2) {
-                ctx.fillStyle = "blue";
-                const rx = x + x * 100;
-                const ry = y + y * 100;
-                ctx.fillRect(rx, ry, 90, 90);
+            switch (grid[y*3+x]) {
+                case 0: ctx.fillStyle = "black"; break;
+                case myId: ctx.fillStyle = "green"; break;
+                default: ctx.fillStyle = "blue"; break;
             }
+
+            const rx = x + x * 100;
+            const ry = y + y * 100;
+            ctx.fillRect(rx, ry, 90, 90);
         }
     }
 }
