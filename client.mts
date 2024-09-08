@@ -1,4 +1,4 @@
-import { Request, Response, Message } from "common.mjs";
+import { Request, Response, Message, Hello } from "common.mjs";
 
 const ws = new WebSocket("ws://localhost:1234");
 const grid = [0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -7,6 +7,7 @@ const ctx = canvas?.getContext("2d") as CanvasRenderingContext2D | null;
 
 ws.onopen = (e) => {
     console.log("connected to server");
+
     if (canvas) {
         if (ctx) {
             drawGrid(ctx, grid);
@@ -25,11 +26,21 @@ ws.onopen = (e) => {
 
 ws.onmessage = (evt) => {
     const msg: Message = JSON.parse(evt.data);
-    if (ctx && msg.kind == "update") {
-        drawGrid(ctx, (msg.data as Response).grid);
-    }
-    else {
-        console.log(msg);
+    switch (msg.kind) {
+        case "hello": {
+            const h1 = document.getElementById("title") as HTMLHeadingElement | null;
+            if (h1) {
+                h1.innerText = `connected to server with id ${(msg.data as Hello).id}`
+            }
+        }
+        case "update": {
+            if (ctx) {
+                drawGrid(ctx, (msg.data as Response).grid);
+            }
+        }
+        default: {
+            console.log(msg);
+        }
     }
 };
 

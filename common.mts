@@ -2,7 +2,7 @@ export type MessageKind = "hello" | "update";
 
 export interface Message {
 	kind: MessageKind,
-	data: Response | string,
+	data: Response | Hello,
 }
 
 export interface Request {
@@ -12,5 +12,9 @@ export interface Request {
 
 export interface Response {
 	grid: number[]
+}
+
+export interface Hello {
+    id: number
 }
 

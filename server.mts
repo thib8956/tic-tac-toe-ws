@@ -1,4 +1,4 @@
-import { Message, Response } from "common.mjs"
+import { Message, Response, Hello } from "common.mjs"
 import { WebSocket, WebSocketServer } from "ws";
 
 const port = 1234
@@ -18,7 +18,7 @@ wss.on("connection", (ws) => {
     }
 
     clients.push(ws);
-    ws.send(JSON.stringify({kind: "hello", data: `player #${id} connected`} as any));
+    ws.send(JSON.stringify({kind: "hello", data: { id } as Hello}));
     console.log(`player #${id} connected`);
 
     ws.addEventListener("message", (event: any) => {
