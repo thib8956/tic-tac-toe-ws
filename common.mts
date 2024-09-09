@@ -1,8 +1,8 @@
-export type MessageKind = "hello" | "update";
+export type MessageKind = "hello" | "update" | "endgame";
 
 export interface Message {
 	kind: MessageKind,
-	data: Response | Hello,
+	data: Response | Hello | EndGame,
 }
 
 export interface Request {
@@ -18,3 +18,6 @@ export interface Hello {
     id: number
 }
 
+export interface EndGame {
+    issue: "win" | "lose" | "draw"
+}

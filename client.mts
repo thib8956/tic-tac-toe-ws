@@ -1,4 +1,4 @@
-import { Request, Response, Message, Hello } from "common.mjs";
+import { Request, Response, Message, Hello, EndGame } from "common.mjs";
 
 const ws = new WebSocket("ws://localhost:1234");
 const grid = [0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -44,6 +44,19 @@ ws.onmessage = (evt) => {
             }
             break;
         }
+	case "endgame": {
+            const h1 = document.getElementById("title") as HTMLHeadingElement | null;
+            if (h1) {
+		const issue = (msg.data as EndGame).issue;
+		switch (issue){
+	            case "win": h1.innerText = "you won"; break;
+		    case "lose": h1.innerText = "you lose"; break;
+		    case "draw": h1.innerText = "it's a draw!"; break;
+		    default: throw new Error(`unexpected ${issue}`);
+		}
+	    }
+	    break;
+	}
         default: {
             console.log(msg);
             break;
