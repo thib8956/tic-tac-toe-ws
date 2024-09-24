@@ -27,6 +27,7 @@ let circle = true;
 let pendingEvts: Point[] = [];
 let shapes: Shape[] = [];
 let myId: number | null = null;
+let canvasMsg: string = "Offline";
 
 function drawGridBackground(ctx: CanvasRenderingContext2D, origin: Point) {
     ctx.strokeStyle = "white";
@@ -53,7 +54,7 @@ function resizeCanvas(ctx: CanvasRenderingContext2D) {
 
 
 function coordToGridIndex(origin: Point, clientPos: Point): [number, number] | undefined {
- // Coord relative to origin of the grid (origin)
+    // Coord relative to origin of the grid (origin)
     const pt = { x: clientPos.x - origin.x, y: clientPos.y - origin.y };
     const gridIndex: [number, number] = [Math.floor(3 * pt.x / GRID_SIZE), Math.floor(3 * pt.y / GRID_SIZE)];
     if (gridIndex[0] >= 0 && gridIndex[0] <= 2 && gridIndex[1] >= 0 && gridIndex[1] <= 2) {
@@ -62,7 +63,7 @@ function coordToGridIndex(origin: Point, clientPos: Point): [number, number] | u
     return undefined;
 }
 
-function handlePendingEvts(gridOrigin: Point, ws: WebSocket) {
+function handlePendingEvts(ws: WebSocket, gridOrigin: Point) {
     for (const evt of pendingEvts) {
         const gridIndex = coordToGridIndex(gridOrigin, evt);
         if (gridIndex) {
@@ -73,22 +74,6 @@ function handlePendingEvts(gridOrigin: Point, ws: WebSocket) {
     }
     pendingEvts = [];
 }
-
-/*function drawGrid(ctx: CanvasRenderingContext2D, grid: number[]){
-    for (let y = 0; y < 3; ++y) {
-        for (let x = 0; x < 3; ++x) {
-            switch (grid[y*3+x]) {
-                case 0: ctx.fillStyle = "black"; break;
-                case myId: ctx.fillStyle = "green"; break;
-                default: ctx.fillStyle = "blue"; break;
-            }
-
-            const rx = x + x * 100;
-            const ry = y + y * 100;
-            ctx.fillRect(rx, ry, 90, 90);
-        }
-    }
-}*/
 
 function drawCircle(ctx: CanvasRenderingContext2D, center: Point) {
     const radius = SHAPE_SIZE/2;
@@ -137,14 +122,20 @@ function updateGridState(ctx: CanvasRenderingContext2D, gridOrigin: Point) {
     }
 }
 
+// update loop, called every frame
 function update(ctx: CanvasRenderingContext2D, time: number, ws: WebSocket) {
     const gridOrigin: Point = { 
         x: ctx.canvas.width / 2 - GRID_SIZE / 2,
         y: ctx.canvas.height / 2 - GRID_SIZE / 2
     };
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    ctx.fillStyle = "white";
+    ctx.font = "24px sans-serif";
+    ctx.fillText(canvasMsg, 10, 30);
 
     drawGridBackground(ctx, gridOrigin);
-    handlePendingEvts(gridOrigin, ws);
+    handlePendingEvts(ws, gridOrigin);
     updateGridState(ctx, gridOrigin);
 
     window.requestAnimationFrame(t => update(ctx, t, ws));
@@ -174,12 +165,23 @@ function init() {
         switch (msg.kind) {
             case "hello": {
                 myId = (msg.data as Hello).id;
-                console.log(`connected to server with id ${myId}`);
+		canvasMsg = `connected to server with id ${myId}`;
+                console.log(canvasMsg);
                 break;
             }
             case "update": {
                 grid = (msg.data as Response).grid;
                 console.log(grid);
+                break;
+            }
+            case "endgame": {
+                const issue = (msg.data as EndGame).issue;
+                switch (issue) {
+                    case "win": canvasMsg = "you won"; break;
+                    case "lose": canvasMsg = "you lose"; break;
+                    case "draw": canvasMsg = "it's a draw!"; break;
+                    default: throw new Error(`unexpected ${issue}`);
+                }
                 break;
             }
             default: {

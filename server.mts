@@ -5,6 +5,7 @@ const port = 1234
 const wss = new WebSocketServer({ port });
 
 let grid = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+let endGame = false;
 
 console.log(`waiting for connection on ws://localhost:${port}`);
 
@@ -42,7 +43,7 @@ wss.on("connection", (ws) => {
             currentPlayer = player;
         }
 
-        if (clients.length < 2 || player!.id != currentPlayer?.id) {
+        if (clients.length < 2 || player!.id != currentPlayer?.id || endGame) {
             return;
         }
 
@@ -68,6 +69,7 @@ wss.on("connection", (ws) => {
                         data: { issue: "draw" } as EndGame
                     };
                     c.ws.send(JSON.stringify(msg));
+		    endGame = true;
                 }
             } else {
                 console.log(`player ${winnerId} won !`);
