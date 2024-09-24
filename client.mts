@@ -1,71 +1,80 @@
 import { Request, Response, Message, Hello, EndGame } from "common.mjs";
 
+const CELL_SIZE = 150;
+const GRID_SIZE = CELL_SIZE * 3;
+const SHAPE_SIZE = 100;
+const ANIMATE_DURATION = 500; // ms
+
+
 const ws = new WebSocket("ws://localhost:1234");
-const grid = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 const canvas = document.getElementById("game") as HTMLCanvasElement | null;
 const ctx = canvas?.getContext("2d") as CanvasRenderingContext2D | null;
 
+interface Point {
+    x: number;
+    y: number;
+}
+
+interface Shape {
+    kind: "circle" | "cross";
+    center: Point;
+    hue: number;
+    time: number;
+}
+
+let grid = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+let circle = true;
+let pendingEvts: Point[] = [];
+let shapes: Shape[] = [];
 let myId: number | null = null;
 
-ws.onopen = (e) => {
-    console.log("connected to server");
+function drawGridBackground(ctx: CanvasRenderingContext2D, origin: Point) {
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 5;
 
-    if (canvas) {
-        if (ctx) {
-            drawGrid(ctx, grid);
-            canvas.addEventListener("click", (evt: any) => {
-                const {clientX, clientY} = evt;
-                const x = Math.floor(clientX / 90);
-                const y = Math.floor(clientY / 90);
-                if (x < 3 && y < 3) {
-                    const msg: Request = { x, y };
-                    ws.send(JSON.stringify(msg));
-                }
-            });
+    for (let x = 1; x < 3; ++x) {
+        ctx.moveTo(origin.x + x * CELL_SIZE, 0 + origin.y);
+        ctx.lineTo(origin.x + x * CELL_SIZE, origin.y + GRID_SIZE);
+    }
+
+    for (let y = 1; y < 3; ++y) {
+        ctx.moveTo(origin.x + 0, origin.y + y * CELL_SIZE);
+        ctx.lineTo(origin.x + GRID_SIZE, origin.y + y * CELL_SIZE);
+    }
+
+    ctx.stroke();
+}
+
+
+function resizeCanvas(ctx: CanvasRenderingContext2D) {
+    ctx.canvas.width  = window.innerWidth;
+    ctx.canvas.height = window.innerHeight;
+}
+
+
+function coordToGridIndex(origin: Point, clientPos: Point): [number, number] | undefined {
+ // Coord relative to origin of the grid (origin)
+    const pt = { x: clientPos.x - origin.x, y: clientPos.y - origin.y };
+    const gridIndex: [number, number] = [Math.floor(3 * pt.x / GRID_SIZE), Math.floor(3 * pt.y / GRID_SIZE)];
+    if (gridIndex[0] >= 0 && gridIndex[0] <= 2 && gridIndex[1] >= 0 && gridIndex[1] <= 2) {
+        return gridIndex;
+    }
+    return undefined;
+}
+
+function handlePendingEvts(gridOrigin: Point, ws: WebSocket) {
+    for (const evt of pendingEvts) {
+        const gridIndex = coordToGridIndex(gridOrigin, evt);
+        if (gridIndex) {
+            const [x, y] = gridIndex;
+            const msg: Request = { x, y };
+            ws.send(JSON.stringify(msg));
         }
     }
-};
+    pendingEvts = [];
+}
 
-ws.onmessage = (evt) => {
-    const msg: Message = JSON.parse(evt.data);
-    console.log(msg);
-    switch (msg.kind) {
-        case "hello": {
-            myId = (msg.data as Hello).id;
-            const h1 = document.getElementById("title") as HTMLHeadingElement | null;
-            if (h1) {
-                h1.innerText = `connected to server with id ${myId}`
-            }
-            break;
-        }
-        case "update": {
-            if (ctx) {
-                drawGrid(ctx, (msg.data as Response).grid);
-            }
-            break;
-        }
-	case "endgame": {
-            const h1 = document.getElementById("title") as HTMLHeadingElement | null;
-            if (h1) {
-		const issue = (msg.data as EndGame).issue;
-		switch (issue){
-	            case "win": h1.innerText = "you won"; break;
-		    case "lose": h1.innerText = "you lose"; break;
-		    case "draw": h1.innerText = "it's a draw!"; break;
-		    default: throw new Error(`unexpected ${issue}`);
-		}
-	    }
-	    break;
-	}
-        default: {
-            console.log(msg);
-            break;
-        }
-    }
-};
-
-
-function drawGrid(ctx: CanvasRenderingContext2D, grid: number[]){
+/*function drawGrid(ctx: CanvasRenderingContext2D, grid: number[]){
     for (let y = 0; y < 3; ++y) {
         for (let x = 0; x < 3; ++x) {
             switch (grid[y*3+x]) {
@@ -79,5 +88,109 @@ function drawGrid(ctx: CanvasRenderingContext2D, grid: number[]){
             ctx.fillRect(rx, ry, 90, 90);
         }
     }
+}*/
+
+function drawCircle(ctx: CanvasRenderingContext2D, center: Point) {
+    const radius = SHAPE_SIZE/2;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
 }
 
+function drawCross(ctx: CanvasRenderingContext2D, center: Point) {
+    const startPoint = { x: center.x-SHAPE_SIZE/2, y: center.y-SHAPE_SIZE/2 };
+    ctx.beginPath();
+    ctx.moveTo(startPoint.x, startPoint.y);
+    ctx.lineTo(startPoint.x + 100, startPoint.y + 100);
+    ctx.moveTo(startPoint.x + 100, startPoint.y);
+    ctx.lineTo(startPoint.x, startPoint.y + 100);
+    ctx.stroke();
+}
+
+function gridIndexToCoords(gridOrigin: Point, x: number, y: number): Point {
+    const center = {
+        x: gridOrigin.x + x * CELL_SIZE + CELL_SIZE/2,
+        y: gridOrigin.y + y * CELL_SIZE + CELL_SIZE/2
+    };
+    return center;
+}
+
+function updateGridState(ctx: CanvasRenderingContext2D, gridOrigin: Point) {
+    for (let y = 0; y < 3; ++y) {
+        for (let x = 0; x < 3; ++x) {
+            switch (grid[y*3+x]) {
+                case 0: break;
+                case 1: {
+                    const p = gridIndexToCoords(gridOrigin, x, y);
+                    drawCircle(ctx, p);
+                    break;
+
+                }
+                case 2: {
+                    const p = gridIndexToCoords(gridOrigin, x, y);
+                    drawCross(ctx, p);
+                    break;
+                }
+                default: throw new Error(`unhandled grid state ${grid[y*3+x]}`); 
+            }
+        }
+    }
+}
+
+function update(ctx: CanvasRenderingContext2D, time: number, ws: WebSocket) {
+    const gridOrigin: Point = { 
+        x: ctx.canvas.width / 2 - GRID_SIZE / 2,
+        y: ctx.canvas.height / 2 - GRID_SIZE / 2
+    };
+
+    drawGridBackground(ctx, gridOrigin);
+    handlePendingEvts(gridOrigin, ws);
+    updateGridState(ctx, gridOrigin);
+
+    window.requestAnimationFrame(t => update(ctx, t, ws));
+}
+
+function init() {
+    // canvas stuff
+    const canvas = document.getElementById("game") as HTMLCanvasElement | null;
+    if (!canvas) throw new Error("unable to get canvas HTML element");
+    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D | null;
+    if (!ctx) throw new Error("unable to get canvas 2D context");
+    resizeCanvas(ctx); // Init canvas
+
+    canvas.addEventListener("click", (evt) => {
+        const {clientX, clientY} = evt;
+        pendingEvts.push({x: clientX, y: clientY});
+    });
+
+    // websocket stuff
+    ws.onopen = (e) => {
+        console.log("connected to websocket");
+    };
+
+    ws.onmessage = (evt) => {
+        const msg: Message = JSON.parse(evt.data);
+        console.log(msg);
+        switch (msg.kind) {
+            case "hello": {
+                myId = (msg.data as Hello).id;
+                console.log(`connected to server with id ${myId}`);
+                break;
+            }
+            case "update": {
+                grid = (msg.data as Response).grid;
+                console.log(grid);
+                break;
+            }
+            default: {
+                console.warn("unhandled message kind:", msg.kind);
+                break;
+            }
+        }
+    };
+
+    //window.addEventListener('resize', () => resizeCanvas(ctx));
+    window.requestAnimationFrame(t => update(ctx, t, ws));
+}
+
+init();
