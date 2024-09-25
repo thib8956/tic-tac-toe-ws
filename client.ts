@@ -5,7 +5,11 @@ const GRID_SIZE = CELL_SIZE * 3;
 const SHAPE_SIZE = 100;
 const ANIMATE_DURATION = 500; // ms
 
-const ws = new WebSocket("ws://localhost:1234");
+let address = "ws://localhost:1234";
+if (window.location.hostname !== "localhost") {
+    address = "wss://tic-tac-toe-ws-production.up.railway.app";
+}
+const ws = new WebSocket(address);
 
 interface Point {
     x: number;
@@ -219,6 +223,12 @@ function init() {
                     case "draw": canvasMsg = "it's a draw!"; break;
                     default: throw new Error(`unexpected ${issue}`);
                 }
+                break;
+            }
+            case "reset": {
+                canvasMsg = `Game reset... Id #${myId}, playing as ${mySymbol}`;
+                grid = new Array(9);
+                pendingEvts = [];
                 break;
             }
             default: {

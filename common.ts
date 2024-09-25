@@ -1,8 +1,8 @@
-export type MessageKind = "hello" | "update" | "endgame";
+export type MessageKind = "hello" | "update" | "endgame" | "reset";
 
 export interface Message {
     kind: MessageKind,
-    data: Response | Hello | EndGame,
+    data: Response | Hello | EndGame | Reset,
 }
 
 export interface Request {
@@ -11,7 +11,6 @@ export interface Request {
 }
 
 export interface Response {
-    grid: number[],
     last: { x: number, y: number, symbol: "x" | "o" }
 }
 
@@ -23,3 +22,6 @@ export interface Hello {
 export interface EndGame {
     issue: "win" | "lose" | "draw"
 }
+
+type Reset = undefined;
+

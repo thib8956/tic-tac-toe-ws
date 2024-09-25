@@ -19,6 +19,12 @@ let id = 1;
 let clients: Client[] = [];
 let currentPlayer: Client | undefined = undefined;
 
+function getPlayerSymbol(): "o" | "x" {
+    console.assert(clients.length < 2, "there should never be more than 2 clients");
+    if (clients.length === 0) return "o";
+    return clients[0].symbol === "o" ? "x" : "o";
+}
+
 wss.on("connection", (ws) => {
     id += 1;
     if (clients.length == 2) {
@@ -27,7 +33,7 @@ wss.on("connection", (ws) => {
         return;
     }
 
-    const symbol = clients.length == 0 ? "o" : "x";
+    const symbol = getPlayerSymbol();
     const helloMsg: Message = {
         kind: "hello",
         data: { id, symbol } as Hello
@@ -57,7 +63,6 @@ wss.on("connection", (ws) => {
                 const msg: Message = {
                     kind: "update",
                     data: {
-                        grid,
                         last: { x, y, symbol: player.symbol }
                     } as Response,
                 }
@@ -92,14 +97,22 @@ wss.on("connection", (ws) => {
                     kind: "endgame",
                     data: { issue: "lose" } as EndGame
                 } as Message));
-		endGame = true;
+                endGame = true;
             }
         }
     });
 
-    ws.on("close", () => {
-        console.log(`player #${id} disconnected`);
-        clients = clients.filter(x => x.id !== id);
+    ws.on("close", (code: number) => {
+        console.log(`player disconnected. Resetting game. code: ${code}`);
+        clients = clients.filter(x => x.ws.readyState !== 3); // 3 == CLOSED
+        // reset game state
+        grid = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        currentPlayer = undefined;
+        for (const c of clients) {
+            c.ws.send(JSON.stringify({
+                kind: "reset"
+            } as Message));
+        }
     });
 });
 
