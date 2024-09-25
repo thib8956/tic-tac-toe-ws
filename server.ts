@@ -1,4 +1,4 @@
-import { Message, Response, Hello, EndGame } from "common.mjs"
+import { Message, Response, Hello, EndGame } from "common.js"
 import { WebSocket, WebSocketServer, MessageEvent } from "ws";
 
 const port = 1234

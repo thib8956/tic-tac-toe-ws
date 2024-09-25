@@ -1,4 +1,4 @@
-import { Request, Response, Message, Hello, EndGame } from "common.mjs";
+import { Request, Response, Message, Hello, EndGame } from "common.js";
 
 const CELL_SIZE = 150;
 const GRID_SIZE = CELL_SIZE * 3;
