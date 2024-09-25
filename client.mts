@@ -5,10 +5,7 @@ const GRID_SIZE = CELL_SIZE * 3;
 const SHAPE_SIZE = 100;
 const ANIMATE_DURATION = 500; // ms
 
-
 const ws = new WebSocket("ws://localhost:1234");
-const canvas = document.getElementById("game") as HTMLCanvasElement | null;
-const ctx = canvas?.getContext("2d") as CanvasRenderingContext2D | null;
 
 interface Point {
     x: number;
@@ -16,15 +13,15 @@ interface Point {
 }
 
 interface Shape {
-    kind: "circle" | "cross";
-    center: Point;
+    kind: "o" | "x";
+    pos: Point;
     hue: number;
-    time: number;
+    time: number | null;
 }
 
 let grid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 let pendingEvts: Point[] = [];
-let shapes: Shape[] = [];
+let pendingShapes: Shape[] = [];
 let myId: number | null = null;
 let mySymbol: "x" | "o" | null = null;
 let canvasMsg: string = "Offline";
@@ -75,6 +72,30 @@ function handlePendingEvts(ws: WebSocket, gridOrigin: Point) {
     pendingEvts = [];
 }
 
+
+function handlePendingShapes(ctx: CanvasRenderingContext2D, gridOrigin: Point, time: number) {
+    const shapes = [];
+    for (let shape of pendingShapes) {
+        if (shape.time === null) {
+            shape.time = time;
+        }
+        const dt = time - shape.time;
+        const p = gridIndexToCoords(gridOrigin, shape.pos.x, shape.pos.y);
+        switch (shape.kind) {
+            case "o": 
+                drawAnimatedCircle(ctx, dt, p.x, p.y, shape.hue);
+                break;
+            case "x":
+                drawAnimatedCross(ctx, dt, p.x, p.y, shape.hue);
+                break;
+        }
+        if (dt <= ANIMATE_DURATION) {
+            shapes.push(shape);
+        }
+    }
+    pendingShapes = shapes;
+}
+
 function drawCircle(ctx: CanvasRenderingContext2D, center: Point) {
     const radius = SHAPE_SIZE/2;
     ctx.beginPath();
@@ -92,6 +113,45 @@ function drawCross(ctx: CanvasRenderingContext2D, center: Point) {
     ctx.stroke();
 }
 
+function drawAnimatedCircle(ctx: CanvasRenderingContext2D, dt: number, x: number, y: number, hue: number) {
+    const radius = SHAPE_SIZE / 2;
+    const end = dt*2*Math.PI/ANIMATE_DURATION;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.min(end, 2*Math.PI));
+    const percent = Math.trunc(100*Math.min(end, 2*Math.PI)/(2*Math.PI));
+    ctx.strokeStyle = `hsla(${hue}, ${percent}%, 50%, 1)`;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawAnimatedCross(ctx: CanvasRenderingContext2D, dt: number, x: number, y: number, hue: number) {
+    const startPoint: Point = { x: x-SHAPE_SIZE/2, y: y-SHAPE_SIZE/2 };
+    const halfAnim = ANIMATE_DURATION/2;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(startPoint.x, startPoint.y);
+
+    const delta = SHAPE_SIZE*dt/halfAnim;
+    if (delta < SHAPE_SIZE) { // draw \
+        const d = Math.min(delta, SHAPE_SIZE);
+        ctx.lineTo(startPoint.x + d, startPoint.y + d);
+    } else { // draw /
+        ctx.lineTo(startPoint.x + SHAPE_SIZE, startPoint.y + SHAPE_SIZE); // keep \ drawn
+        ctx.moveTo(startPoint.x + SHAPE_SIZE, startPoint.y);
+        const d = Math.min(delta - SHAPE_SIZE, SHAPE_SIZE);
+        ctx.lineTo(startPoint.x + SHAPE_SIZE - d, startPoint.y + d);
+    }
+
+    ctx.lineWidth = 5;
+    const percent = Math.trunc(100*Math.min(delta, SHAPE_SIZE)/SHAPE_SIZE);
+    ctx.strokeStyle = `hsla(${hue}, ${percent}%, 50%, 1)`;
+    ctx.stroke();
+    ctx.restore();
+}
+
 function gridIndexToCoords(gridOrigin: Point, x: number, y: number): Point {
     const center = {
         x: gridOrigin.x + x * CELL_SIZE + CELL_SIZE/2,
@@ -103,6 +163,10 @@ function gridIndexToCoords(gridOrigin: Point, x: number, y: number): Point {
 function updateGridState(ctx: CanvasRenderingContext2D, gridOrigin: Point) {
     for (let y = 0; y < 3; ++y) {
         for (let x = 0; x < 3; ++x) {
+            if (pendingShapes.some(s => s.pos.x === x && s.pos.y === y)) {
+                continue;
+            }
+
             switch (grid[y*3+x]) {
                 case 0: break;
                 case myId: {
@@ -135,6 +199,7 @@ function update(ctx: CanvasRenderingContext2D, time: number, ws: WebSocket) {
 
     drawGridBackground(ctx, gridOrigin);
     handlePendingEvts(ws, gridOrigin);
+    handlePendingShapes(ctx, gridOrigin, time);
     updateGridState(ctx, gridOrigin);
 
     window.requestAnimationFrame(t => update(ctx, t, ws));
@@ -165,12 +230,20 @@ function init() {
             case "hello": {
                 myId = (msg.data as Hello).id;
                 mySymbol = (msg.data as Hello).symbol;
-		        canvasMsg = `connected to server with id ${myId}, ${mySymbol}`;
+                canvasMsg = `connected to server with id ${myId}, ${mySymbol}`;
                 console.log(canvasMsg);
                 break;
             }
             case "update": {
-                grid = (msg.data as Response).grid;
+        const res = msg.data as Response;
+        const shape: Shape = {
+            kind: res.last.symbol,
+            pos: { x: res.last.x, y: res.last.y },
+            hue: Math.floor(Math.random() * 255),
+            time: null,
+        };
+                grid = res.grid;
+        pendingShapes.push(shape);
                 console.log(grid);
                 break;
             }

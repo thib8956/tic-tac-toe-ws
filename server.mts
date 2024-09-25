@@ -56,7 +56,10 @@ wss.on("connection", (ws) => {
             for (const c of clients) {
                 const msg: Message = {
                     kind: "update",
-                    data: { grid } as Response,
+                    data: {
+                        grid,
+                        last: { x, y, symbol: player.symbol }
+                    } as Response,
                 }
                 c.ws.send(JSON.stringify(msg));
             }
