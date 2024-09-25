@@ -92,6 +92,7 @@ wss.on("connection", (ws) => {
                     kind: "endgame",
                     data: { issue: "lose" } as EndGame
                 } as Message));
+		endGame = true;
             }
         }
     });
