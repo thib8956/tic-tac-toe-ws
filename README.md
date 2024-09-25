@@ -1,4 +1,8 @@
-# Test websockets
+# Tic tac toe websockets
+
+Two players tic-tac-joe implemented with an HTML canvas and websockets 
+
+![](screenshot.png)
 
 ## How to run
 
