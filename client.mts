@@ -22,11 +22,11 @@ interface Shape {
     time: number;
 }
 
-let grid = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-let circle = true;
+let grid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 let pendingEvts: Point[] = [];
 let shapes: Shape[] = [];
 let myId: number | null = null;
+let mySymbol: "x" | "o" | null = null;
 let canvasMsg: string = "Offline";
 
 function drawGridBackground(ctx: CanvasRenderingContext2D, origin: Point) {
@@ -105,18 +105,17 @@ function updateGridState(ctx: CanvasRenderingContext2D, gridOrigin: Point) {
         for (let x = 0; x < 3; ++x) {
             switch (grid[y*3+x]) {
                 case 0: break;
-                case 1: {
+                case myId: {
                     const p = gridIndexToCoords(gridOrigin, x, y);
-                    drawCircle(ctx, p);
+                    mySymbol == "o" ? drawCircle(ctx, p) : drawCross(ctx, p);
                     break;
 
                 }
-                case 2: {
+                default: {
                     const p = gridIndexToCoords(gridOrigin, x, y);
-                    drawCross(ctx, p);
+                    mySymbol == "o" ? drawCross(ctx, p) : drawCircle(ctx, p);
                     break;
                 }
-                default: throw new Error(`unhandled grid state ${grid[y*3+x]}`); 
             }
         }
     }
@@ -165,7 +164,8 @@ function init() {
         switch (msg.kind) {
             case "hello": {
                 myId = (msg.data as Hello).id;
-		canvasMsg = `connected to server with id ${myId}`;
+                mySymbol = (msg.data as Hello).symbol;
+		        canvasMsg = `connected to server with id ${myId}, ${mySymbol}`;
                 console.log(canvasMsg);
                 break;
             }

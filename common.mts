@@ -15,7 +15,8 @@ export interface Response {
 }
 
 export interface Hello {
-    id: number
+    id: number,
+	symbol: "x" | "o"
 }
 
 export interface EndGame {
