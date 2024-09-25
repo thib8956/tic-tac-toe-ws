@@ -31,7 +31,7 @@ let grid: Cell[] = new Array(9);
 let pendingEvts: Point[] = [];
 let myId: number | null = null;
 let mySymbol: "x" | "o" | null = null;
-let canvasMsg: string = "Offline";
+let canvasMsg: string = "Offline...";
 
 function drawGridBackground(ctx: CanvasRenderingContext2D, origin: Point) {
     ctx.strokeStyle = "white";
@@ -50,12 +50,11 @@ function drawGridBackground(ctx: CanvasRenderingContext2D, origin: Point) {
     ctx.stroke();
 }
 
-
 function resizeCanvas(ctx: CanvasRenderingContext2D) {
     ctx.canvas.width  = window.innerWidth;
     ctx.canvas.height = window.innerHeight;
+    ctx.clearRect(0, 0, ctx.canvas.height, ctx. canvas.width);
 }
-
 
 function coordToGridIndex(origin: Point, clientPos: Point): [number, number] | undefined {
     // Coord relative to origin of the grid (origin)
@@ -129,7 +128,7 @@ function gridIndexToCoords(gridOrigin: Point, x: number, y: number): Point {
 function updateGridState(ctx: CanvasRenderingContext2D, time: number, gridOrigin: Point) {
     for (let y = 0; y < 3; ++y) {
         for (let x = 0; x < 3; ++x) {
-            const shape = grid[y*3+x]
+            const shape = grid[y*3+x];
             if (shape) {
                 if (shape.time === null) {
                     shape.time = time;
@@ -164,7 +163,7 @@ function update(ctx: CanvasRenderingContext2D, time: number, ws: WebSocket) {
 
     ctx.fillStyle = "white";
     ctx.font = "24px sans-serif";
-    ctx.fillText(canvasMsg, 10, 30);
+    ctx.fillText(canvasMsg, gridOrigin.x, gridOrigin.y - 50);
 
     drawGridBackground(ctx, gridOrigin);
     handlePendingEvts(ws, gridOrigin);
@@ -188,7 +187,7 @@ function init() {
 
     // websocket stuff
     ws.onopen = (e) => {
-        console.log("connected to websocket");
+        console.log("connected to websocket server");
     };
 
     ws.onmessage = (evt) => {
@@ -238,7 +237,7 @@ function init() {
         }
     };
 
-    //window.addEventListener('resize', () => resizeCanvas(ctx));
+    window.addEventListener('resize', () => resizeCanvas(ctx));
     window.requestAnimationFrame(t => update(ctx, t, ws));
 }
 

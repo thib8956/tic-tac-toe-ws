@@ -25,9 +25,9 @@ function getPlayerSymbol(): "o" | "x" {
     return clients[0].symbol === "o" ? "x" : "o";
 }
 
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, req) => {
     id += 1;
-    if (clients.length == 2) {
+    if (clients.length === 2) {
         console.log("too many players");
         ws.close();
         return;
@@ -40,14 +40,15 @@ wss.on("connection", (ws) => {
     }
     clients.push({id, ws, symbol});
     ws.send(JSON.stringify(helloMsg));
-    console.log(`player #${id} connected`);
+    const addr = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+    console.log(`player #${id} connected with address ${addr}. total clients ${clients.length}`);
 
     ws.addEventListener("message", (event: MessageEvent) => {
         const message = JSON.parse(event.data as string);
         const {x, y} = message;
         const player = clients.find(x => x.ws === ws);
         if (!player) throw new Error("player not found");
-        console.log(message, player!.id, currentPlayer?.id);
+        console.log("received message", message, "player", player!.id, "currentPlayer", currentPlayer?.id);
 
         if (!currentPlayer) {
             currentPlayer = player;
@@ -103,11 +104,12 @@ wss.on("connection", (ws) => {
     });
 
     ws.on("close", (code: number) => {
-        console.log(`player disconnected. Resetting game. code: ${code}`);
         clients = clients.filter(x => x.ws.readyState !== 3); // 3 == CLOSED
+        console.log(`player disconnected. Resetting game. Total clients ${clients.length}`);
         // reset game state
-        grid = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        grid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
         currentPlayer = undefined;
+        endGame = false;
         for (const c of clients) {
             c.ws.send(JSON.stringify({
                 kind: "reset"
