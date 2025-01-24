@@ -1,4 +1,4 @@
-import { Message, Response, Hello, EndGame } from "common.js"
+import { Message, Update, Hello, EndGame } from "common.js"
 import { WebSocket, WebSocketServer, MessageEvent } from "ws";
 
 const port = 1234
@@ -54,6 +54,19 @@ wss.on("connection", (ws, req) => {
             currentPlayer = player;
         }
 
+        if (endGame) {
+            console.log("player", currentPlayer!.id, "reset the game");
+            // reset game state
+            grid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            currentPlayer = undefined;
+            endGame = false;
+            for (const c of clients) {
+                c.ws.send(JSON.stringify({
+                    kind: "reset"
+                } as Message));
+            }
+        }
+
         if (clients.length < 2 || player.id != currentPlayer?.id || endGame) {
             return;
         }
@@ -65,7 +78,7 @@ wss.on("connection", (ws, req) => {
                     kind: "update",
                     data: {
                         last: { x, y, symbol: player.symbol }
-                    } as Response,
+                    } as Update,
                 }
                 c.ws.send(JSON.stringify(msg));
             }

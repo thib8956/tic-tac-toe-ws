@@ -1,4 +1,4 @@
-import { Request, Response, Message, Hello, EndGame } from "common.js";
+import { Click, Update, Message, Hello, EndGame } from "common.js";
 
 const CELL_SIZE = 150;
 const GRID_SIZE = CELL_SIZE * 3;
@@ -71,7 +71,7 @@ function handlePendingEvts(ws: WebSocket, gridOrigin: Point) {
         const gridIndex = coordToGridIndex(gridOrigin, evt);
         if (gridIndex) {
             const [x, y] = gridIndex;
-            const msg: Request = { x, y };
+            const msg: Click = { x, y };
             ws.send(JSON.stringify(msg));
         }
     }
@@ -202,7 +202,7 @@ function init() {
                 break;
             }
             case "update": {
-                const res = msg.data as Response;
+                const res = msg.data as Update;
                 const { x, y } = res.last;
                 const shape: Shape = {
                     kind: res.last.symbol,
@@ -217,17 +217,19 @@ function init() {
             case "endgame": {
                 const issue = (msg.data as EndGame).issue;
                 switch (issue) {
-                    case "win": canvasMsg = "you won"; break;
-                    case "lose": canvasMsg = "you lose"; break;
-                    case "draw": canvasMsg = "it's a draw!"; break;
+                    case "win": canvasMsg = "You won!"; break;
+                    case "lose": canvasMsg = "You lose!"; break;
+                    case "draw": canvasMsg = "It's a draw!"; break;
                     default: throw new Error(`unexpected ${issue}`);
                 }
+                canvasMsg += " Click to reset";
                 break;
             }
             case "reset": {
                 canvasMsg = `Game reset... Id #${myId}, playing as ${mySymbol}`;
                 grid = new Array(9);
                 pendingEvts = [];
+                resizeCanvas(ctx);
                 break;
             }
             default: {

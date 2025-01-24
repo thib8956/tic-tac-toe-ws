@@ -1,16 +1,16 @@
-export type MessageKind = "hello" | "update" | "endgame" | "reset";
+export type MessageKind = "click" | "hello" | "update" | "endgame" | "reset";
 
 export interface Message {
     kind: MessageKind,
-    data: Response | Hello | EndGame | Reset,
+    data: Click | Update | Hello | EndGame | Reset,
 }
 
-export interface Request {
+export interface Click {
     x: number,
     y: number
 }
 
-export interface Response {
+export interface Update {
     last: { x: number, y: number, symbol: "x" | "o" }
 }
 
