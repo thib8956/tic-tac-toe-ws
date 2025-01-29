@@ -81,6 +81,12 @@ wss.on("connection", (ws, req) => {
                     kind: "reset"
                 } as Message));
             }
+
+            for (const s of spectators) {
+                s.send(JSON.stringify({
+                    kind: "reset"
+                } as Message));
+            }
         }
 
         if (clients.length < 2 || player.id != currentPlayer?.id || endGame) {
