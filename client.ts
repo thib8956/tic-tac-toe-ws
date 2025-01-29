@@ -1,4 +1,4 @@
-import { Click, Update, Message, Hello, EndGame } from "common.js";
+import { Click, Update, Message, Hello, EndGame, Spectate } from "common.js";
 
 const CELL_SIZE = 150;
 const GRID_SIZE = CELL_SIZE * 3;
@@ -29,6 +29,7 @@ interface Shape {
 
 let grid: Cell[] = new Array(9);
 let pendingEvts: Point[] = [];
+let spectate = false;  // is this client in spectator mode?
 let myId: number | null = null;
 let mySymbol: "x" | "o" | null = null;
 let canvasMsg: string = "Offline...";
@@ -181,6 +182,10 @@ function init() {
     resizeCanvas(ctx); // Init canvas
 
     canvas.addEventListener("click", (evt) => {
+        if (spectate) {
+            console.debug("ignoring click in spectator mode");
+            return;
+        }
         const {clientX, clientY} = evt;
         pendingEvts.push({x: clientX, y: clientY});
     });
@@ -199,6 +204,21 @@ function init() {
                 mySymbol = (msg.data as Hello).symbol;
                 canvasMsg = `connected to server with id ${myId}, ${mySymbol}`;
                 console.log(canvasMsg);
+                break;
+            }
+            case "spectate": {
+                spectate = true;
+                canvasMsg = "connected as spectator";
+                // Initialize grid state
+                for (const [index, sym] of (msg.data as Spectate).grid.entries()) {
+                    if (sym === undefined) continue;
+                    grid[index] = {
+                        kind: sym,
+                        pos: { x: index % 3, y: Math.floor(index / 3) } as Point,
+                        hue: Math.floor(Math.random() * 255),
+                        time: null,
+                    } as Shape;
+                }
                 break;
             }
             case "update": {

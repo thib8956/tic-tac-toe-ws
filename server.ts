@@ -1,4 +1,4 @@
-import { Message, Update, Hello, EndGame } from "common.js"
+import { Message, Update, Hello, EndGame, Symbol } from "common.js"
 import { WebSocket, WebSocketServer, MessageEvent } from "ws";
 
 const port = 1234
@@ -16,10 +16,11 @@ interface Client {
 }
 
 let id = 1;
+let spectators: WebSocket[] = [];
 let clients: Client[] = [];
 let currentPlayer: Client | undefined = undefined;
 
-function getPlayerSymbol(): "o" | "x" {
+function getPlayerSymbol(): Symbol {
     console.assert(clients.length < 2, "there should never be more than 2 clients");
     if (clients.length === 0) return "o";
     return clients[0].symbol === "o" ? "x" : "o";
@@ -28,8 +29,23 @@ function getPlayerSymbol(): "o" | "x" {
 wss.on("connection", (ws, req) => {
     id += 1;
     if (clients.length === 2) {
-        console.log("too many players");
-        ws.close();
+        spectators.push(ws);
+        const spectateData: (Symbol | undefined)[] = [];
+        for (const playerId of grid) {
+            if (playerId === 0) {
+                spectateData.push(undefined);
+            } else {
+                const sym = clients.find(c => c.id === playerId)!.symbol;
+                spectateData.push(sym);
+            }
+        }
+        const spectateMsg: Message = {
+            kind: "spectate",
+            data: { grid: spectateData }
+        };
+        ws.send(JSON.stringify(spectateMsg));
+        const addr = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+        console.log(`new spectator connected with address ${addr}. total spectators ${spectators.length}`);
         return;
     }
 
@@ -73,14 +89,19 @@ wss.on("connection", (ws, req) => {
 
         if (grid[y*3+x] === 0) {
             grid[y*3+x] = player.id;
+            const msg = JSON.stringify({
+                kind: "update",
+                data: {
+                    last: { x, y, symbol: player.symbol }
+                } as Update,
+            } as Message);
+
             for (const c of clients) {
-                const msg: Message = {
-                    kind: "update",
-                    data: {
-                        last: { x, y, symbol: player.symbol }
-                    } as Update,
-                }
-                c.ws.send(JSON.stringify(msg));
+                c.ws.send(msg);
+            }
+
+            for (const s of spectators) {
+                s.send(msg);
             }
 
             const winnerId = checkWin(grid);
@@ -89,13 +110,16 @@ wss.on("connection", (ws, req) => {
                 console.assert(currentPlayer);
                 console.log(`current player is #${currentPlayer?.id}`);
             } else if (winnerId == 0) {
+                endGame = true;
+                const msg = JSON.stringify({
+                    kind: "endgame",
+                    data: { issue: "draw" } as EndGame
+                } as Message);
                 for (const c of clients) {
-                    const msg: Message = {
-                        kind: "endgame",
-                        data: { issue: "draw" } as EndGame
-                    };
-                    c.ws.send(JSON.stringify(msg));
-                    endGame = true;
+                    c.ws.send(msg);
+                }
+                for (const s of spectators) {
+                    s.send(msg);
                 }
             } else {
                 console.log(`player ${winnerId} won !`);
@@ -117,16 +141,21 @@ wss.on("connection", (ws, req) => {
     });
 
     ws.on("close", (code: number) => {
-        clients = clients.filter(x => x.ws.readyState !== 3); // 3 == CLOSED
-        console.log(`player disconnected. Resetting game. Total clients ${clients.length}`);
-        // reset game state
-        grid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-        currentPlayer = undefined;
-        endGame = false;
-        for (const c of clients) {
-            c.ws.send(JSON.stringify({
-                kind: "reset"
-            } as Message));
+        // readyState 3 == CLOSED
+        spectators = spectators.filter(s => s.readyState !== 3);
+        const isClientDisconnect = clients.findIndex(c => c.ws.readyState !== 3)
+        if (isClientDisconnect) {
+            clients = clients.filter(x => x.ws.readyState !== 3);
+            console.log(`player disconnected. Resetting game. Total clients ${clients.length}`);
+            // reset game state
+            grid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            currentPlayer = undefined;
+            endGame = false;
+            for (const c of clients) {
+                c.ws.send(JSON.stringify({
+                    kind: "reset"
+                } as Message));
+            }
         }
     });
 });
