@@ -22,7 +22,6 @@ type Cell = Empty | Shape;
 
 interface Shape {
     kind: "o" | "x";
-    pos: Point;
     hue: number;
     time: number | null;
 }
@@ -135,7 +134,7 @@ function updateGridState(ctx: CanvasRenderingContext2D, time: number, gridOrigin
                     shape.time = time;
                 }
 
-                const p = gridIndexToCoords(gridOrigin, shape.pos.x, shape.pos.y);
+                const p = gridIndexToCoords(gridOrigin, x, y);
                 const dt = time - shape.time;
 
                 switch (shape.kind) {
@@ -214,7 +213,6 @@ function init() {
                     if (sym === undefined) continue;
                     grid[index] = {
                         kind: sym,
-                        pos: { x: index % 3, y: Math.floor(index / 3) } as Point,
                         hue: Math.floor(Math.random() * 255),
                         time: null,
                     } as Shape;
@@ -226,7 +224,6 @@ function init() {
                 const { x, y } = res.last;
                 const shape: Shape = {
                     kind: res.last.symbol,
-                    pos: { x,  y },
                     hue: Math.floor(Math.random() * 255),
                     time: null,
                 };
