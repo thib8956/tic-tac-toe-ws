@@ -28,7 +28,7 @@ interface Shape {
 
 let grid: Cell[] = new Array(9);
 let pendingEvts: Point[] = [];
-let spectate = false;  // is this client in spectator mode?
+let isSpectator = false;  // is this client in spectator mode?
 let myId: number | null = null;
 let mySymbol: "x" | "o" | null = null;
 let canvasMsg: string = "Offline...";
@@ -181,7 +181,7 @@ function init() {
     resizeCanvas(ctx); // Init canvas
 
     canvas.addEventListener("click", (evt) => {
-        if (spectate) {
+        if (isSpectator) {
             console.debug("ignoring click in spectator mode");
             return;
         }
@@ -206,7 +206,7 @@ function init() {
                 break;
             }
             case "spectate": {
-                spectate = true;
+                isSpectator = true;
                 canvasMsg = "connected as spectator";
                 // Initialize grid state
                 for (const [index, sym] of (msg.data as Spectate).grid.entries()) {
@@ -243,7 +243,9 @@ function init() {
                 break;
             }
             case "reset": {
-                canvasMsg = `Game reset... Id #${myId}, playing as ${mySymbol}`;
+                if (!isSpectator) {
+                    canvasMsg = `Game reset... Id #${myId}, playing as ${mySymbol}`;
+                }
                 grid = new Array(9);
                 pendingEvts = [];
                 resizeCanvas(ctx);
