@@ -1,4 +1,4 @@
-import { Click, Update, Message, Hello, EndGame, Spectate } from "common.js";
+import type { Click, Update, Message, Hello, EndGame, Spectate } from "common.js";
 
 const CELL_SIZE = 150;
 const GRID_SIZE = CELL_SIZE * 3;

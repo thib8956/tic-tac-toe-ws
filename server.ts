@@ -1,4 +1,4 @@
-import { Message, Update, Hello, EndGame, Symbol, SymbolWithHue } from "common.js"
+import type { Message, Update, Hello, EndGame, Symbol, SymbolWithHue } from "common.js"
 import { WebSocket, WebSocketServer, MessageEvent } from "ws";
 
 const port = 1234
@@ -64,7 +64,7 @@ wss.on("connection", (ws, req) => {
     ws.addEventListener("message", (event: MessageEvent) => {
         const message = JSON.parse(event.data as string);
         const {x, y} = message;
-        const hue = Math.floor(Math.random() * 255);
+        const hue = Math.floor(Math.random() * 361); // hue is a value in degrees
         const player = clients.find(x => x.ws === ws);
         if (!player) throw new Error("player not found");
         console.log("received message", message, "player", player!.id, "currentPlayer", currentPlayer?.id);
@@ -77,6 +77,7 @@ wss.on("connection", (ws, req) => {
             console.log("player", currentPlayer!.id, "reset the game");
             // reset game state
             grid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            hues = [0, 0, 0, 0, 0, 0, 0, 0, 0];
             currentPlayer = undefined;
             endGame = false;
             for (const c of clients) {
@@ -151,14 +152,14 @@ wss.on("connection", (ws, req) => {
     });
 
     ws.on("close", (code: number) => {
-        // readyState 3 == CLOSED
-        spectators = spectators.filter(s => s.readyState !== 3);
-        const isClientDisconnect = clients.findIndex(c => c.ws.readyState !== 3)
+        spectators = spectators.filter(s => s.readyState !== WebSocket.CLOSED);
+        const isClientDisconnect = clients.some(c => c.ws === ws);
         if (isClientDisconnect) {
-            clients = clients.filter(x => x.ws.readyState !== 3);
+            clients = clients.filter(x => x.ws.readyState !== WebSocket.CLOSED);
             console.log(`player disconnected. Resetting game. Total clients ${clients.length}`);
             // reset game state
             grid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            hues = [0, 0, 0, 0, 0, 0, 0, 0, 0];
             currentPlayer = undefined;
             endGame = false;
             for (const c of clients) {
