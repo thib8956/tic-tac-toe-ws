@@ -1,10 +1,11 @@
-import { Message, Update, Hello, EndGame, Symbol } from "common.js"
+import { Message, Update, Hello, EndGame, Symbol, SymbolWithHue } from "common.js"
 import { WebSocket, WebSocketServer, MessageEvent } from "ws";
 
 const port = 1234
 const wss = new WebSocketServer({ port });
 
-let grid = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+let grid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+let hues = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 let endGame = false;
 
 console.log(`waiting for connection on ws://localhost:${port}`);
@@ -30,13 +31,14 @@ wss.on("connection", (ws, req) => {
     id += 1;
     if (clients.length === 2) {
         spectators.push(ws);
-        const spectateData: (Symbol | undefined)[] = [];
-        for (const playerId of grid) {
+        const spectateData: (SymbolWithHue | undefined)[] = [];
+        for (const [i, playerId] of grid.entries()) {
             if (playerId === 0) {
                 spectateData.push(undefined);
             } else {
                 const sym = clients.find(c => c.id === playerId)!.symbol;
-                spectateData.push(sym);
+                const hue = hues[i];
+                spectateData.push({ symbol: sym, hue: hue });
             }
         }
         const spectateMsg: Message = {
@@ -62,6 +64,7 @@ wss.on("connection", (ws, req) => {
     ws.addEventListener("message", (event: MessageEvent) => {
         const message = JSON.parse(event.data as string);
         const {x, y} = message;
+        const hue = Math.floor(Math.random() * 255);
         const player = clients.find(x => x.ws === ws);
         if (!player) throw new Error("player not found");
         console.log("received message", message, "player", player!.id, "currentPlayer", currentPlayer?.id);
@@ -95,10 +98,11 @@ wss.on("connection", (ws, req) => {
 
         if (grid[y*3+x] === 0) {
             grid[y*3+x] = player.id;
+            hues[y*3+x] = hue;
             const msg = JSON.stringify({
                 kind: "update",
                 data: {
-                    last: { x, y, symbol: player.symbol }
+                    last: { x, y, symbol: player.symbol, hue: hue },
                 } as Update,
             } as Message);
 

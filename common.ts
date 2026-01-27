@@ -1,9 +1,12 @@
 export type MessageKind = "click" | "hello" | "update" | "endgame" | "reset" | "spectate";
 
-export interface Message {
-    kind: MessageKind,
-    data: Click | Update | Hello | EndGame | Reset | Spectate,
-}
+export type Message =
+  | { kind: "click", data: Click }
+  | { kind: "hello", data: Hello }
+  | { kind: "update", data: Update }
+  | { kind: "endgame", data: EndGame }
+  | { kind: "reset", data: Reset }
+  | { kind: "spectate", data: Spectate };
 
 export interface Click {
     x: number,
@@ -12,8 +15,10 @@ export interface Click {
 
 export type Symbol = "x" | "o";
 
+export type SymbolWithHue = { symbol: Symbol, hue: number };
+
 export interface Update {
-    last: { x: number, y: number, symbol: Symbol }
+    last: { x: number, y: number, symbol: Symbol, hue: number}
 }
 
 export interface Hello {
@@ -27,8 +32,7 @@ export interface EndGame {
 
 type Reset = undefined;
 
-
 export interface Spectate {
-    grid: (Symbol | undefined)[]
+    grid: (SymbolWithHue | undefined)[]
 }
 

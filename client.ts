@@ -210,11 +210,11 @@ function init() {
                 canvasMsg = "connected as spectator";
                 // Initialize grid state
                 for (const [index, sym] of (msg.data as Spectate).grid.entries()) {
-                    if (sym === undefined) continue;
+                    if (!sym) continue;
                     grid[index] = {
-                        kind: sym,
-                        hue: Math.floor(Math.random() * 255),
+                        kind: sym.symbol,
                         time: null,
+                        hue: sym.hue,
                     } as Shape;
                 }
                 break;
@@ -224,7 +224,7 @@ function init() {
                 const { x, y } = res.last;
                 const shape: Shape = {
                     kind: res.last.symbol,
-                    hue: Math.floor(Math.random() * 255),
+                    hue: res.last.hue,
                     time: null,
                 };
                 grid[y*3+x] = shape;
