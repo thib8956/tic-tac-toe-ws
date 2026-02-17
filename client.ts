@@ -85,7 +85,7 @@ function drawAnimatedCircle(ctx: CanvasRenderingContext2D, dt: number, x: number
     ctx.save();
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.min(end, 2*Math.PI));
-    const percent = Math.trunc(100*Math.min(end, 2*Math.PI)/(2*Math.PI));
+    const percent = Math.floor(100*Math.min(end, 2*Math.PI)/(2*Math.PI));
     ctx.strokeStyle = `hsla(${hue}, ${percent}%, 50%, 1)`;
     ctx.lineWidth = 5;
     ctx.stroke();
@@ -112,7 +112,7 @@ function drawAnimatedCross(ctx: CanvasRenderingContext2D, dt: number, x: number,
     }
 
     ctx.lineWidth = 5;
-    const percent = Math.trunc(100*Math.min(delta, SHAPE_SIZE)/SHAPE_SIZE);
+    const percent = Math.floor(100*Math.min(delta, SHAPE_SIZE)/SHAPE_SIZE);
     ctx.strokeStyle = `hsla(${hue}, ${percent}%, 50%, 1)`;
     ctx.stroke();
     ctx.restore();
