@@ -1,14 +1,15 @@
 import type { Message, Update, Hello, EndGame, Symbol, SymbolWithHue } from "common.js"
 import { WebSocket, WebSocketServer, MessageEvent } from "ws";
 
-const port = 1234
-const wss = new WebSocketServer({ port });
+const PORT = 1234;
+const GRID_SIZE = 3;
+const wss = new WebSocketServer({ port: PORT });
 
 let grid = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 let hues = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 let endGame = false;
 
-console.log(`waiting for connection on ws://localhost:${port}`);
+console.log(`waiting for connection on ws://localhost:${PORT}`);
 
 interface Client {
     id: number,
@@ -36,7 +37,12 @@ wss.on("connection", (ws, req) => {
             if (playerId === 0) {
                 spectateData.push(undefined);
             } else {
-                const sym = clients.find(c => c.id === playerId)!.symbol;
+                const client = clients.find(c => c.id === playerId);
+                if (!client) {
+                    spectateData.push(undefined);
+                    continue;
+                }
+                const sym = client.symbol;
                 const hue = hues[i];
                 spectateData.push({ symbol: sym, hue: hue });
             }
@@ -55,15 +61,25 @@ wss.on("connection", (ws, req) => {
     const helloMsg: Message = {
         kind: "hello",
         data: { id, symbol } as Hello
-    }
+    };
     clients.push({id, ws, symbol});
     ws.send(JSON.stringify(helloMsg));
     const addr = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
     console.log(`player #${id} connected with address ${addr}. total clients ${clients.length}`);
 
     ws.addEventListener("message", (event: MessageEvent) => {
-        const message = JSON.parse(event.data as string);
+        let message;
+        try {
+            message = JSON.parse(event.data as string);
+        } catch {
+            console.warn("received non-JSON message, ignoring");
+            return;
+        }
         const {x, y} = message;
+        if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) {
+            console.warn("received invalid move, ignoring");
+            return;
+        }
         const hue = Math.floor(Math.random() * 361); // hue is a value in degrees
         const player = clients.find(x => x.ws === ws);
         if (!player) throw new Error("player not found");
@@ -93,12 +109,12 @@ wss.on("connection", (ws, req) => {
             }
         }
 
-        if (clients.length < 2 || player.id != currentPlayer?.id || endGame) {
+        if (clients.length < 2 || player.id !== currentPlayer?.id || endGame) {
             return;
         }
 
-        if (grid[y*3+x] === 0) {
-            grid[y*3+x] = player.id;
+        if (grid[y * GRID_SIZE + x] === 0) {
+            grid[y * GRID_SIZE + x] = player.id;
             hues[y*3+x] = hue;
             const msg = JSON.stringify({
                 kind: "update",
@@ -151,7 +167,7 @@ wss.on("connection", (ws, req) => {
         }
     });
 
-    ws.on("close", (code: number) => {
+    ws.on("close", () => {
         spectators = spectators.filter(s => s.readyState !== WebSocket.CLOSED);
         const isClientDisconnect = clients.some(c => c.ws === ws);
         if (isClientDisconnect) {

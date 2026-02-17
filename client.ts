@@ -31,6 +31,7 @@ let pendingEvts: Point[] = [];
 let isSpectator = false;  // is this client in spectator mode?
 let myId: number | null = null;
 let mySymbol: "x" | "o" | null = null;
+let animationId: number;
 let canvasMsg: string = "Offline...";
 
 function drawGridBackground(ctx: CanvasRenderingContext2D, origin: Point) {
@@ -43,7 +44,7 @@ function drawGridBackground(ctx: CanvasRenderingContext2D, origin: Point) {
     }
 
     for (let y = 1; y < 3; ++y) {
-        ctx.moveTo(origin.x + 0, origin.y + y * CELL_SIZE);
+        ctx.moveTo(origin.x, origin.y + y * CELL_SIZE);
         ctx.lineTo(origin.x + GRID_SIZE, origin.y + y * CELL_SIZE);
     }
 
@@ -53,13 +54,13 @@ function drawGridBackground(ctx: CanvasRenderingContext2D, origin: Point) {
 function resizeCanvas(ctx: CanvasRenderingContext2D) {
     ctx.canvas.width  = window.innerWidth;
     ctx.canvas.height = window.innerHeight;
-    ctx.clearRect(0, 0, ctx.canvas.height, ctx. canvas.width);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx. canvas.height);
 }
 
 function coordToGridIndex(origin: Point, clientPos: Point): [number, number] | undefined {
     // Coord relative to origin of the grid (origin)
     const pt = { x: clientPos.x - origin.x, y: clientPos.y - origin.y };
-    const gridIndex: [number, number] = [Math.floor(3 * pt.x / GRID_SIZE), Math.floor(3 * pt.y / GRID_SIZE)];
+    const gridIndex: [number, number] = [Math.floor(pt.x / CELL_SIZE), Math.floor(pt.y / CELL_SIZE)];
     if (gridIndex[0] >= 0 && gridIndex[0] <= 2 && gridIndex[1] >= 0 && gridIndex[1] <= 2) {
         return gridIndex;
     }
@@ -169,7 +170,7 @@ function update(ctx: CanvasRenderingContext2D, time: number, ws: WebSocket) {
     handlePendingEvts(ws, gridOrigin);
     updateGridState(ctx, time, gridOrigin);
 
-    window.requestAnimationFrame(t => update(ctx, t, ws));
+    animationId = window.requestAnimationFrame(t => update(ctx, t, ws));
 }
 
 function init() {
@@ -190,12 +191,26 @@ function init() {
     });
 
     // websocket stuff
-    ws.onopen = (e) => {
+    ws.onopen = () => {
         console.log("connected to websocket server");
     };
 
+    ws.onerror = () => {
+        canvasMsg = "Connection error!";
+    };
+
+    ws.onclose = () => {
+        canvasMsg = "Disconnected";
+    };
+
     ws.onmessage = (evt) => {
-        const msg: Message = JSON.parse(evt.data);
+        let msg: Message;
+        try {
+            msg = JSON.parse(evt.data);
+        } catch {
+            console.debug("received non-JSON message, ignoring");
+            return;
+        }
         console.log(msg);
         switch (msg.kind) {
             case "hello": {
@@ -260,6 +275,7 @@ function init() {
 
     window.addEventListener('resize', () => resizeCanvas(ctx));
     window.requestAnimationFrame(t => update(ctx, t, ws));
+    window.addEventListener('beforeunload', () => cancelAnimationFrame(animationId));
 }
 
 init();
