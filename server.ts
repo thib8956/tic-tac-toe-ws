@@ -172,70 +172,16 @@ wss.on("connection", (ws, req) => {
 });
 
 function checkWin(grid: number[]): number {
-    const clone = [...grid];
-    const grid2d = [];
-    while(clone.length) grid2d.push(clone.splice(0,3));
-
-    if (
-        grid2d[0][0] !== 0 &&
-        grid2d[0][0] === grid2d[0][1] &&
-        grid2d[0][1] === grid2d[0][2]
-    ) {
-        return grid2d[0][0];
-    }
-    if (
-        grid2d[1][0] !== 0 &&
-        grid2d[1][0] === grid2d[1][1] &&
-        grid2d[1][1] === grid2d[1][2]
-    ) {
-        return grid2d[1][0];
-    }
-    if (
-        grid2d[2][0] !== 0 &&
-        grid2d[2][0] === grid2d[2][1] &&
-        grid2d[2][1] === grid2d[2][2]
-    ) {
-        return grid2d[2][0];
-    }
-    if (
-        grid2d[0][0] !== 0 &&
-        grid2d[0][0] === grid2d[1][0] &&
-        grid2d[1][0] === grid2d[2][0]
-    ) {
-        return grid2d[0][0];
-    }
-    if (
-        grid2d[0][1] !== 0 &&
-        grid2d[0][1] === grid2d[1][1] &&
-        grid2d[1][1] === grid2d[2][1]
-    ) {
-        return grid2d[0][1];
-    }
-    if (
-        grid2d[0][2] !== 0 &&
-        grid2d[0][2] === grid2d[1][2] &&
-        grid2d[1][2] === grid2d[2][2]
-    ) {
-        return grid2d[0][2];
-    }
-    if (
-        grid2d[0][0] !== 0 &&
-        grid2d[0][0] === grid2d[1][1] &&
-        grid2d[1][1] === grid2d[2][2]
-    ) {
-        return grid2d[0][0];
-    }
-    if (
-        grid2d[0][2] !== 0 &&
-        grid2d[0][2] === grid2d[1][1] &&
-        grid2d[1][1] === grid2d[2][0]
-    ) {
-        return grid2d[0][2];
-    }
-    for (const row of grid2d) {
-        if (row[0] === 0 || row[1] === 0 || row[2] === 0) {
-            return -1;
+    const wins = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], // ROWS
+        [0, 3, 6], [1, 4, 7], [2, 5, 8], // COLS
+        [0, 4, 8], [2, 4, 6]             // DIAGONALS
+    ];
+    for (const [a, b, c] of wins) {
+        if (grid[a] !== 0 && grid[a] === grid[b] && grid[a] === grid[c]) {
+            return grid[a];
         }
     }
-    return 0;
+    return grid.includes(0) ? -1 : 0;
 }
+
