@@ -1,9 +1,8 @@
 import type { Click, Update, Message, Hello, EndGame, Spectate } from "common.js";
 
-const CELL_SIZE = 150;
-const GRID_SIZE = CELL_SIZE * 3;
-const SHAPE_SIZE = 100;
 const ANIMATE_DURATION = 500; // ms
+const GRID_PADDING = 10;
+const MESSAGE_PADDING = 20;
 
 let address = "ws://localhost:1234";
 if (window.location.hostname !== "localhost") {
@@ -34,18 +33,18 @@ let mySymbol: "x" | "o" | null = null;
 let animationId: number;
 let canvasMsg: string = "Offline...";
 
-function drawGridBackground(ctx: CanvasRenderingContext2D, origin: Point) {
+function drawGridBackground(ctx: CanvasRenderingContext2D, origin: Point, cellSize: number, gridSize: number) {
     ctx.strokeStyle = "white";
     ctx.lineWidth = 5;
 
     for (let x = 1; x < 3; ++x) {
-        ctx.moveTo(origin.x + x * CELL_SIZE, 0 + origin.y);
-        ctx.lineTo(origin.x + x * CELL_SIZE, origin.y + GRID_SIZE);
+        ctx.moveTo(origin.x + x * cellSize, origin.y);
+        ctx.lineTo(origin.x + x * cellSize, origin.y + gridSize);
     }
 
     for (let y = 1; y < 3; ++y) {
-        ctx.moveTo(origin.x, origin.y + y * CELL_SIZE);
-        ctx.lineTo(origin.x + GRID_SIZE, origin.y + y * CELL_SIZE);
+        ctx.moveTo(origin.x, origin.y + y * cellSize);
+        ctx.lineTo(origin.x + gridSize, origin.y + y * cellSize);
     }
 
     ctx.stroke();
@@ -54,22 +53,22 @@ function drawGridBackground(ctx: CanvasRenderingContext2D, origin: Point) {
 function resizeCanvas(ctx: CanvasRenderingContext2D) {
     ctx.canvas.width  = window.innerWidth;
     ctx.canvas.height = window.innerHeight;
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx. canvas.height);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 }
 
-function coordToGridIndex(origin: Point, clientPos: Point): [number, number] | undefined {
+function coordToGridIndex(origin: Point, clientPos: Point, cellSize: number): [number, number] | undefined {
     // Coord relative to origin of the grid (origin)
     const pt = { x: clientPos.x - origin.x, y: clientPos.y - origin.y };
-    const gridIndex: [number, number] = [Math.floor(pt.x / CELL_SIZE), Math.floor(pt.y / CELL_SIZE)];
+    const gridIndex: [number, number] = [Math.floor(pt.x / cellSize), Math.floor(pt.y / cellSize)];
     if (gridIndex[0] >= 0 && gridIndex[0] <= 2 && gridIndex[1] >= 0 && gridIndex[1] <= 2) {
         return gridIndex;
     }
     return undefined;
 }
 
-function handlePendingEvts(ws: WebSocket, gridOrigin: Point) {
+function handlePendingEvts(ws: WebSocket, gridOrigin: Point, cellSize: number) {
     for (const evt of pendingEvts) {
-        const gridIndex = coordToGridIndex(gridOrigin, evt);
+        const gridIndex = coordToGridIndex(gridOrigin, evt, cellSize);
         if (gridIndex) {
             const [x, y] = gridIndex;
             const msg: Click = { x, y };
@@ -79,8 +78,8 @@ function handlePendingEvts(ws: WebSocket, gridOrigin: Point) {
     pendingEvts = [];
 }
 
-function drawAnimatedCircle(ctx: CanvasRenderingContext2D, dt: number, x: number, y: number, hue: number) {
-    const radius = SHAPE_SIZE / 2;
+function drawAnimatedCircle(ctx: CanvasRenderingContext2D, dt: number, x: number, y: number, hue: number, shapeSize: number) {
+    const radius = shapeSize / 2;
     const end = dt*2*Math.PI/ANIMATE_DURATION;
     ctx.save();
     ctx.beginPath();
@@ -92,41 +91,42 @@ function drawAnimatedCircle(ctx: CanvasRenderingContext2D, dt: number, x: number
     ctx.restore();
 }
 
-function drawAnimatedCross(ctx: CanvasRenderingContext2D, dt: number, x: number, y: number, hue: number) {
-    const startPoint: Point = { x: x-SHAPE_SIZE/2, y: y-SHAPE_SIZE/2 };
+function drawAnimatedCross(ctx: CanvasRenderingContext2D, dt: number, x: number, y: number, hue: number, shapeSize: number) {
+    const startPoint: Point = { x: x-shapeSize/2, y: y-shapeSize/2 };
     const halfAnim = ANIMATE_DURATION/2;
 
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(startPoint.x, startPoint.y);
 
-    const delta = SHAPE_SIZE*dt/halfAnim;
-    if (delta < SHAPE_SIZE) { // draw \
-        const d = Math.min(delta, SHAPE_SIZE);
+    const delta = shapeSize*dt/halfAnim;
+    if (delta < shapeSize) { // draw \
+        const d = Math.min(delta, shapeSize);
         ctx.lineTo(startPoint.x + d, startPoint.y + d);
     } else { // draw /
-        ctx.lineTo(startPoint.x + SHAPE_SIZE, startPoint.y + SHAPE_SIZE); // keep \ drawn
-        ctx.moveTo(startPoint.x + SHAPE_SIZE, startPoint.y);
-        const d = Math.min(delta - SHAPE_SIZE, SHAPE_SIZE);
-        ctx.lineTo(startPoint.x + SHAPE_SIZE - d, startPoint.y + d);
+        ctx.lineTo(startPoint.x + shapeSize, startPoint.y + shapeSize); // keep \ drawn
+        ctx.moveTo(startPoint.x + shapeSize, startPoint.y);
+        const d = Math.min(delta - shapeSize, shapeSize);
+        ctx.lineTo(startPoint.x + shapeSize - d, startPoint.y + d);
     }
 
     ctx.lineWidth = 5;
-    const percent = Math.floor(100*Math.min(delta, SHAPE_SIZE)/SHAPE_SIZE);
+    const percent = Math.floor(100*Math.min(delta, shapeSize)/shapeSize);
     ctx.strokeStyle = `hsla(${hue}, ${percent}%, 50%, 1)`;
     ctx.stroke();
     ctx.restore();
 }
 
-function gridIndexToCoords(gridOrigin: Point, x: number, y: number): Point {
+function gridIndexToCoords(gridOrigin: Point, x: number, y: number, cellSize: number): Point {
     const center = {
-        x: gridOrigin.x + x * CELL_SIZE + CELL_SIZE/2,
-        y: gridOrigin.y + y * CELL_SIZE + CELL_SIZE/2
+        x: gridOrigin.x + x * cellSize + cellSize/2,
+        y: gridOrigin.y + y * cellSize + cellSize/2
     };
     return center;
 }
 
-function updateGridState(ctx: CanvasRenderingContext2D, time: number, gridOrigin: Point) {
+function updateGridState(ctx: CanvasRenderingContext2D, time: number, gridOrigin: Point, cellSize: number) {
+    const shapeSize = cellSize * 0.80;
     for (let y = 0; y < 3; ++y) {
         for (let x = 0; x < 3; ++x) {
             const shape = grid[y*3+x];
@@ -135,16 +135,16 @@ function updateGridState(ctx: CanvasRenderingContext2D, time: number, gridOrigin
                     shape.time = time;
                 }
 
-                const p = gridIndexToCoords(gridOrigin, x, y);
+                const p = gridIndexToCoords(gridOrigin, x, y, cellSize);
                 const dt = time - shape.time;
 
                 switch (shape.kind) {
                     case "o": {
-                        drawAnimatedCircle(ctx, dt, p.x, p.y, shape.hue);
+                        drawAnimatedCircle(ctx, dt, p.x, p.y, shape.hue, shapeSize);
                         break;
                     }
                     case "x": {
-                        drawAnimatedCross(ctx, dt, p.x, p.y, shape.hue);
+                        drawAnimatedCross(ctx, dt, p.x, p.y, shape.hue, shapeSize);
                         break;
                     }
                     default: break;
@@ -156,19 +156,22 @@ function updateGridState(ctx: CanvasRenderingContext2D, time: number, gridOrigin
 
 // update loop, called every frame
 function update(ctx: CanvasRenderingContext2D, time: number, ws: WebSocket) {
+    const cellSize = Math.floor(Math.min(ctx.canvas.width, ctx.canvas.height - MESSAGE_PADDING * 2 - GRID_PADDING) / 3);
+    const gridSize = cellSize * 3;
+    
     const gridOrigin: Point = { 
-        x: ctx.canvas.width / 2 - GRID_SIZE / 2,
-        y: ctx.canvas.height / 2 - GRID_SIZE / 2
+        x: (ctx.canvas.width - gridSize) / 2,
+        y: MESSAGE_PADDING + GRID_PADDING,
     };
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
     ctx.fillStyle = "white";
     ctx.font = "24px sans-serif";
-    ctx.fillText(canvasMsg, gridOrigin.x, gridOrigin.y - 50);
+    ctx.fillText(canvasMsg, gridOrigin.x + MESSAGE_PADDING, MESSAGE_PADDING);
 
-    drawGridBackground(ctx, gridOrigin);
-    handlePendingEvts(ws, gridOrigin);
-    updateGridState(ctx, time, gridOrigin);
+    drawGridBackground(ctx, gridOrigin, cellSize, gridSize);
+    updateGridState(ctx, time, gridOrigin, cellSize);
+    handlePendingEvts(ws, gridOrigin, cellSize);
 
     animationId = window.requestAnimationFrame(t => update(ctx, t, ws));
 }
@@ -183,7 +186,7 @@ function init() {
 
     canvas.addEventListener("click", (evt) => {
         if (isSpectator) {
-            console.debug("ignoring click in spectator mode");
+            console.warn("ignoring click in spectator mode");
             return;
         }
         const {clientX, clientY} = evt;
@@ -208,7 +211,7 @@ function init() {
         try {
             msg = JSON.parse(evt.data);
         } catch {
-            console.debug("received non-JSON message, ignoring");
+            console.warn("received non-JSON message, ignoring");
             return;
         }
         console.log(msg);
@@ -261,9 +264,9 @@ function init() {
                 if (!isSpectator) {
                     canvasMsg = `Game reset... Id #${myId}, playing as ${mySymbol}`;
                 }
-                grid = new Array(9);
-                pendingEvts = [];
-                resizeCanvas(ctx);
+                grid = new Array(9); // reset grid state
+                pendingEvts = []; // reset pending events
+                resizeCanvas(ctx); // hack to avoid race condition on game reset
                 break;
             }
             default: {

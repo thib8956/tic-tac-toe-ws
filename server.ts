@@ -97,9 +97,11 @@ wss.on("connection", (ws, req) => {
             currentPlayer = undefined;
             endGame = false;
             for (const c of clients) {
-                c.ws.send(JSON.stringify({
+                const m = JSON.stringify({
                     kind: "reset"
-                } as Message));
+                } as Message);
+                console.log("sent response", m, c.id);
+                c.ws.send(m);
             }
 
             for (const s of spectators) {
