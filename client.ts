@@ -1,13 +1,16 @@
 import type { Click, Update, Message, Hello, EndGame, Spectate } from "common.js";
 
-const ANIMATE_DURATION = 500; // ms
+declare global {
+    interface Window {
+        TIC_TAC_TOE_CONFIG?: { WS_URL?: string };
+    }
+}
+
+const ANIMATE_DURATION = 500;
 const GRID_PADDING = 10;
 const MESSAGE_PADDING = 20;
 
-let address = "ws://localhost:1234";
-if (window.location.hostname !== "localhost") {
-    address = "wss://tic-tac-toe-ws-production.up.railway.app";
-}
+const address = window.TIC_TAC_TOE_CONFIG?.WS_URL || "ws://localhost:1234";
 const ws = new WebSocket(address);
 
 interface Point {

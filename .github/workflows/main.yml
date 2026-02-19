@@ -19,6 +19,7 @@ jobs:
           mkdir dist
           mv *.js dist/
           mv *.html dist/
+          mv config.js dist/
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
