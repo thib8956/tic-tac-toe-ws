@@ -15,10 +15,7 @@ jobs:
       - name: Install and Build
         run: |
           npm ci
-          npx tsc
-          mkdir dist
-          mv *.js dist/
-          mv *.html dist/
+          npm run build
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5

@@ -4,10 +4,9 @@ const ANIMATE_DURATION = 500; // ms
 const GRID_PADDING = 10;
 const MESSAGE_PADDING = 20;
 
-let address = "ws://localhost:1234";
-if (window.location.hostname !== "localhost") {
-    address = "wss://tic-tac-toe-ws-production.up.railway.app";
-}
+const address = ["127.0.0.1", "localhost"].includes(window.location.hostname)
+    ? "ws://localhost:1234"
+    : "wss://tic-tac-toe-ws-production.up.railway.app";
 const ws = new WebSocket(address);
 
 interface Point {

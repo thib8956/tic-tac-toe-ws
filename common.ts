@@ -1,5 +1,3 @@
-export type MessageKind = "click" | "hello" | "update" | "endgame" | "reset" | "spectate";
-
 export type Message =
   | { kind: "click", data: Click }
   | { kind: "hello", data: Hello }

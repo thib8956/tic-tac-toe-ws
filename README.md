@@ -1,21 +1,17 @@
 # Tic tac toe websockets
 
-Two players tic-tac-joe implemented with an HTML canvas and websockets 
+Two players tic-tac-joe implemented with an HTML canvas and websockets
 
-![](screenshot.png)
+![Screenshot](screenshot.png)
 
 ## How to run
 
-```
-// compilation of .mts files in watch mode
-$ tsc -w
-
+```shell
+$ npm run build:watch
 // serve static files (localhost:8000)
-$ python serve.py
-
+$ npm run serve
 // run server
-$ node server.mjs
+$ npm run start:watch
 ```
 
-Go to http://localhost:8000
-
+Go to [](http://localhost:8000)

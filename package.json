@@ -5,8 +5,11 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-      "build": "tsc",
-      "start": "node server.js"
+    "build": "tsc && cp index.html dist/",
+    "build:watch": "tsc --watch && cp index.html dist/",
+    "start": "node dist/server.js",
+    "start:watch": "node --watch dist/server.js",
+    "serve": "python serve.py"
   },
   "author": "",
   "license": "ISC",
